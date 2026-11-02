@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: zaiko-app
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --workers 2 --timeout 30
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass # CI成功後のみデプロイ
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false

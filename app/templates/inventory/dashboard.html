@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>毎朝の在庫確認</h1>
+<p>発注点以下: <strong>{{ low_count }}</strong> 品目</p>
+<table>
+  <tr><th>品名</th><th>現在庫</th><th>発注点</th><th>更新</th>{% if current_user.role == 'owner' %}<th>管理</th>{% endif %}</tr>
+  {% for item in items %}
+  <tr class="{{ 'low' if item.needs_order else '' }}">
+    <td>{{ item.name }}{% if item.needs_order %} ⚠ 要発注{% endif %}</td>
+    <td>{{ item.quantity }} {{ item.unit }}</td>
+    <td>{{ item.reorder_point }}</td>
+    <td>
+      <form method="post" action="{{ url_for('inventory.update_stock', item_id=item.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input class="num" name="quantity" type="number" step="0.01" min="0" value="{{ item.quantity }}">
+        <button>更新</button>
+      </form>
+    </td>
+    {% if current_user.role == 'owner' %}
+    <td>
+      <a href="{{ url_for('inventory.edit_item', item_id=item.id) }}">編集</a>
+      <form method="post" action="{{ url_for('inventory.delete_item', item_id=item.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button>削除</button>
+      </form>
+    </td>
+    {% endif %}
+  </tr>
+  {% else %}<tr><td colspan="5">品目がありません</td></tr>{% endfor %}
+</table>
+{% if current_user.role == 'owner' %}<p><a href="{{ url_for('inventory.create_item') }}">＋ 品目追加</a></p>{% endif %}
+{% endblock %}

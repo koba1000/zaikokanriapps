@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>構成概要 | 喫茶店 在庫管理アプリ</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4efe8;color:#2b2118;font-family:"Yu Gothic UI","Meiryo",system-ui,sans-serif}
+.slide{width:1280px;min-height:720px;margin:24px auto;background:#fff;padding:36px 48px;border-radius:12px;box-shadow:0 2px 10px #0002}
+h1{margin:0 0 4px;font-size:32px;color:#5b3a29}
+.sub{color:#777;margin-bottom:22px;font-size:16px}
+h2{font-size:20px;margin:0 0 10px;color:#5b3a29;border-left:6px solid #c98a4b;padding-left:10px}
+.flow{display:flex;align-items:center;gap:10px;justify-content:center;margin:10px 0 24px}
+.box{border:2px solid #5b3a29;border-radius:10px;padding:12px 16px;text-align:center;background:#fbf5ec;min-width:170px;font-size:15px}
+.box b{display:block;font-size:17px;margin-bottom:4px}
+.box.green{background:#e6f4ea;border-color:#2e7d32}
+.box.blue{background:#e8f0fe;border-color:#1a56c4}
+.arrow{font-size:13px;color:#555;text-align:center;line-height:1.2}
+.arrow span{display:block;font-size:26px;color:#5b3a29}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{background:#5b3a29;color:#fff;padding:7px 9px;text-align:left}
+td{padding:7px 9px;border-bottom:1px solid #e3d9cc;vertical-align:top}
+td.l{font-weight:bold;white-space:nowrap}
+tr.l1 td.l{background:#fde7d3}tr.l2 td.l{background:#fff0c9}tr.l3 td.l{background:#e9f5d3}
+tr.l4 td.l{background:#d6f0e4}tr.l5 td.l{background:#d3ecf6}tr.l6 td.l{background:#dde0f7}tr.l7 td.l{background:#eadcf5}
+pre{background:#2b2118;color:#f4efe8;padding:14px 16px;border-radius:8px;font-size:13.5px;line-height:1.5;margin:0;font-family:Consolas,monospace}
+.c{color:#e8b77a}
+.key{background:#fff7e6;border:2px dashed #c98a4b;border-radius:10px;padding:12px 16px;margin-top:16px;font-size:15px}
+.ok{color:#2e7d32;font-weight:bold}.ng{color:#b00020;font-weight:bold}
+</style>
+</head>
+<body>
+
+<!-- スライド1: 全体像 -->
+<section class="slide">
+  <h1>喫茶店 在庫管理アプリ：全体構成</h1>
+  <div class="sub">AIが書いたコードを「信じない」前提で、複数の層で止める（多層防御 × CI/CD）</div>
+
+  <h2>① 実行環境（本番）</h2>
+  <div class="flow">
+    <div class="box"><b>ブラウザ</b>店長 / スタッフ<br>スマホ・PC</div>
+    <div class="arrow"><span>→</span>HTTPS</div>
+    <div class="box green"><b>Render</b>Flask + Gunicorn<br>認証・認可・CSRF・CSP</div>
+    <div class="arrow"><span>→</span>TLS</div>
+    <div class="box blue"><b>Neon</b>PostgreSQL<br>住所は暗号化して保存</div>
+  </div>
+
+  <h2>② 開発〜デプロイの流れ（CI/CD）</h2>
+  <div class="flow">
+    <div class="box"><b>開発者 + Copilot</b>指示ファイルで規約</div>
+    <div class="arrow"><span>→</span>commit</div>
+    <div class="box"><b>pre-commit</b>ruff / gitleaks / bandit</div>
+    <div class="arrow"><span>→</span>PR</div>
+    <div class="box"><b>GitHub Actions</b>テスト・SAST・依存・秘密情報</div>
+    <div class="arrow"><span>→</span>承認後 main</div>
+    <div class="box green"><b>Render</b>CI成功時のみ自動デプロイ</div>
+  </div>
+
+  <div class="key">VPNなしでも安全にするために：<b>全ページ認証必須 + 最小権限（店長/スタッフ）+ 重要データの暗号化 + 監査ログ</b></div>
+</section>
+
+<!-- スライド2: 多層防御 -->
+<section class="slide">
+  <h1>多層防御：どの層が何を止めるか</h1>
+  <div class="sub">1つの層をすり抜けても、次の層で止まる</div>
+  <table>
+    <tr><th>層</th><th>場所</th><th>止めるもの</th></tr>
+    <tr class="l1"><td class="l">L1 AI指示</td><td>.github/copilot-instructions.md</td><td>SQL連結・|safe・認可なしルートを<b>そもそも書かせない</b>。TDDを指示</td></tr>
+    <tr class="l2"><td class="l">L2 ローカル</td><td>.pre-commit-config.yaml</td><td>秘密鍵/APIキーのコミット、危険なコード</td></tr>
+    <tr class="l3"><td class="l">L3 PR</td><td>CODEOWNERS / PRテンプレ / ブランチ保護</td><td>認証・暗号・CI設定をAIが勝手に変更してマージ</td></tr>
+    <tr class="l4"><td class="l">L4 CI</td><td>ci.yml / codeql.yml</td><td>テスト失敗、脆弱な依存、秘密情報、危険コード、認可宣言の漏れ</td></tr>
+    <tr class="l5"><td class="l">L5 デプロイ</td><td>render.yaml</td><td>CI未通過のデプロイ、秘密情報のリポジトリ混入</td></tr>
+    <tr class="l6"><td class="l">L6 実行時</td><td>app/ 全体</td><td>未認証アクセス、権限逸脱、CSRF、XSS、総当たり、DB漏えい時の住所閲覧</td></tr>
+    <tr class="l7"><td class="l">L7 事後</td><td>audit.py / 監査ログ画面</td><td>不正操作の追跡（誰が住所・売上を見たか）</td></tr>
+  </table>
+  <div class="key"><b>核となる2つ：</b>
+    ①デフォルト拒否の関所（宣言のないルートは403）　②認可ハーネス（全ルートを自動列挙して検査。新ルートも自動で対象）</div>
+</section>
+
+<!-- スライド3: 構成とロール -->
+<section class="slide">
+  <h1>ディレクトリ構成とロール別権限</h1>
+  <div class="sub">どこに何があるか／誰が何をできるか</div>
+  <div class="cols">
+    <pre>.
+├─ <span class="c">app/</span>                  アプリ本体
+│  ├─ __init__.py      <span class="c">関所（デフォルト拒否）</span>
+│  ├─ authz.py         認可の宣言
+│  ├─ crypto.py        住所の暗号化
+│  ├─ audit.py         監査ログ
+│  ├─ auth/            ログイン・パスワード
+│  ├─ inventory/       在庫・発注・CSV
+│  └─ admin/           売上・住所・アカウント
+├─ <span class="c">tests/</span>
+│  └─ test_authz_matrix.py  <span class="c">認可ハーネス</span>
+├─ <span class="c">.github/</span>  指示・CODEOWNERS・CI
+├─ .pre-commit-config.yaml
+├─ render.yaml         デプロイ定義
+└─ docs/               要件・設計・本資料</pre>
+    <div>
+      <table>
+        <tr><th>機能</th><th>店長</th><th>スタッフ</th></tr>
+        <tr><td>在庫確認・在庫数の更新</td><td class="ok">○</td><td class="ok">○</td></tr>
+        <tr><td>発注候補・CSV出力</td><td class="ok">○</td><td class="ok">○</td></tr>
+        <tr><td>品目の追加・編集・削除</td><td class="ok">○</td><td class="ng">×</td></tr>
+        <tr><td>売上</td><td class="ok">○</td><td class="ng">×</td></tr>
+        <tr><td>従業員の住所</td><td class="ok">○</td><td class="ng">×</td></tr>
+        <tr><td>アカウント管理・監査ログ</td><td class="ok">○</td><td class="ng">×</td></tr>
+      </table>
+      <div class="key" style="margin-top:14px">
+        <b>データ別の防御</b><br>
+        ログイン情報：Argon2id・5回失敗でロック<br>
+        住所：AES-GCM暗号化・閲覧を監査記録<br>
+        売上：店長のみ（直URLでも403）
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+<script>
+// overview.html#1 のように番号を付けると、そのスライドだけ表示（画像書き出し用）
+const n = parseInt(location.hash.slice(1), 10);
+if (n) {
+  document.querySelectorAll("section.slide").forEach((s, i) => { if (i + 1 !== n) s.remove(); });
+  document.body.style.background = "#fff";
+  document.querySelector("section.slide").style.cssText += ";margin:0;box-shadow:none;border-radius:0";
+}
+</script>
+</html>

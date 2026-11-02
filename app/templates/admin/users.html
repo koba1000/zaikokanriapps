@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field %}
+{% block content %}
+<h1>アカウント管理</h1>
+<table>
+  <tr><th>ID</th><th>ロール</th><th>状態</th><th></th></tr>
+  {% for u in users %}
+  <tr><td>{{ u.username }}</td><td>{{ u.role }}</td><td>{{ '有効' if u.active else '無効' }}</td>
+  <td>{% if u.active and u.id != current_user.id %}
+    <form method="post" action="{{ url_for('admin.deactivate_user', user_id=u.id) }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>無効化</button>
+    </form>{% endif %}</td></tr>
+  {% endfor %}
+</table>
+<h2>追加</h2>
+<form method="post">
+  {{ form.hidden_tag() }}
+  {{ field(form.username) }}{{ field(form.role) }}{{ field(form.initial_password, autocomplete="off") }}
+  <button>作成（初回ログインで変更必須）</button>
+</form>
+{% endblock %}

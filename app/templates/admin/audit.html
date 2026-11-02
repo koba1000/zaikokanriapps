@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>監査ログ（直近200件）</h1>
+<table>
+  <tr><th>日時(UTC)</th><th>ユーザーID</th><th>操作</th><th>対象</th></tr>
+  {% for l in logs %}<tr><td>{{ l.at }}</td><td>{{ l.user_id }}</td><td>{{ l.action }}</td><td>{{ l.target }}</td></tr>{% endfor %}
+</table>
+{% endblock %}

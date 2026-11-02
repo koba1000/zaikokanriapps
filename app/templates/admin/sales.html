@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field %}
+{% block content %}
+<h1>売上</h1>
+<form method="post">
+  {{ form.hidden_tag() }}{{ field(form.day, type="date") }}{{ field(form.amount) }}<button>登録/更新</button>
+</form>
+<table>
+  <tr><th>日付</th><th>売上</th></tr>
+  {% for s in sales %}<tr><td>{{ s.day }}</td><td>{{ '{:,}'.format(s.amount) }} 円</td></tr>{% endfor %}
+</table>
+{% endblock %}
