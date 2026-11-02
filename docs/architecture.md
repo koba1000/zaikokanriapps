@@ -89,5 +89,5 @@ pytest ; ruff check . ; bandit -c pyproject.toml -r app
 
 ## 8. 現状の限界と次の一手
 - コードで実装済み：L1〜L7 の設定ファイルとアプリ実装、テスト33件（カバレッジ約87%）
-- **手動設定が必要**（コード化不可）：GitHubのブランチ保護/Rulesets（必須チェック指定）、Secret Scanning/Push Protection、2FA、CODEOWNERSのハンドル置換、Render/Neonの作成・環境変数登録、Neonのアプリ用ロール分離
+- **手動設定が必要**（コード化不可）：GitHubのブランチ保護/Rulesets（必須チェック指定）、Secret Scanning/Push Protection、2FA、Render/Neonの作成・環境変数登録、Neonのアプリ用ロール分離 → 手順は [branching.md](./branching.md)
 - 未実装（フェーズ2）：店長MFA、DBマイグレーション（現状 `init-db`）、ZAP動的検査、型検査(mypy)、CSV出力
