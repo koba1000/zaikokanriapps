@@ -70,6 +70,19 @@ jobs:
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
           ./gitleaks detect --source . --redact --exit-code 1
 
+  guardrail-integrity:
+    # テスト削除・skip化・カバレッジ緩和・CI検査の無効化を検知して失敗させる。保護対象の変更は警告表示
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m scripts.guardrail_check "origin/${{ github.base_ref }}"
+
   workflow-lint:
     runs-on: ubuntu-latest
     steps:

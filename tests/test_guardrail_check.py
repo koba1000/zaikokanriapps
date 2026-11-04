@@ -62,6 +62,14 @@ def test_skip_markers_are_errors():
         assert errors(make_diff("tests/test_auth.py", added=[line])), line
 
 
+def test_skip_marker_inside_string_literal_is_not_error():
+    assert errors(make_diff("tests/test_x.py", added=['    "@pytest.mark.skip",'])) == []
+
+
+def test_skip_via_pytestmark_is_error():
+    assert errors(make_diff("tests/test_x.py", added=["pytestmark = pytest.mark.skip"]))
+
+
 def test_coverage_threshold_lowered_is_error():
     diff = make_diff(
         "pyproject.toml",
@@ -131,7 +139,5 @@ def test_suppression_comments_in_app_warn():
 
 
 def test_multiple_files_are_all_checked():
-    diff = make_diff("tests/test_a.py", deleted=True) + make_diff(
-        "pyproject.toml", added=["x = 1"]
-    )
+    diff = make_diff("tests/test_a.py", deleted=True) + make_diff("pyproject.toml", added=["x = 1"])
     assert len(errors(diff)) == 1 and warnings(diff)
