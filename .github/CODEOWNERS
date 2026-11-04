@@ -11,3 +11,5 @@
 /requirements*.txt    @koba1000
 /render.yaml          @koba1000
 /.pre-commit-config.yaml @koba1000
+/scripts/             @koba1000
+/tests/               @koba1000

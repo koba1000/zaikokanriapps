@@ -37,7 +37,7 @@ Settings → Rules → Rulesets → New branch ruleset（対象: `main`、Enforc
 | Require branches to be up to date | ON | 最新mainでCI通過 |
 | Require linear history | ON | squash mergeに統一 |
 
-必須ステータスチェック名（ci.yml のジョブ名）: `lint` / `test` / `sast` / `dependencies` / `secrets` / `workflow-lint`、`CodeQL`（`analyze`）
+必須ステータスチェック名（ci.yml のジョブ名）: `lint` / `test` / `sast` / `dependencies` / `secrets` / `workflow-lint` / `guardrail-integrity`（PRのみ。テスト削除・skip化・カバレッジ緩和・CI検査無効化を検知して失敗、保護対象の変更は警告。`scripts/guardrail_check.py`）、`CodeQL`（`analyze`）
 ※ 一度CIを走らせないと候補に表示されない。最初のPRで実行してから設定する。
 
 ### 注意：開発者が1人の場合
