@@ -12,24 +12,28 @@ def test_fresh_database_migrates_to_current_schema(tmp_path, monkeypatch):
     command.upgrade(config, "head")
     command.check(config)
 
-    inspector = inspect(create_engine(f"sqlite:///{database_path.as_posix()}"))
-    assert {
-        "alembic_version",
-        "users",
-        "items",
-        "stock_logs",
-        "employees",
-        "sales",
-        "audit_logs",
-        "purchase_orders",
-    }.issubset(inspector.get_table_names())
-    order_columns = {column["name"] for column in inspector.get_columns("purchase_orders")}
-    assert {
-        "status",
-        "ordered_at",
-        "received_at",
-        "cancelled_at",
-        "item_name",
-        "supplier",
-        "unit",
-    }.issubset(order_columns)
+    engine = create_engine(f"sqlite:///{database_path.as_posix()}")
+    try:
+        inspector = inspect(engine)
+        assert {
+            "alembic_version",
+            "users",
+            "items",
+            "stock_logs",
+            "employees",
+            "sales",
+            "audit_logs",
+            "purchase_orders",
+        }.issubset(inspector.get_table_names())
+        order_columns = {column["name"] for column in inspector.get_columns("purchase_orders")}
+        assert {
+            "status",
+            "ordered_at",
+            "received_at",
+            "cancelled_at",
+            "item_name",
+            "supplier",
+            "unit",
+        }.issubset(order_columns)
+    finally:
+        engine.dispose()

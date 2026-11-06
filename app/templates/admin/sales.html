@@ -2,6 +2,7 @@
 {% from "_forms.html" import field %}
 {% block content %}
 <h1>売上</h1>
+<p>日別合計の簡易記録です。会計・税計算・返金には対応していません。</p>
 <form method="post">
   {{ form.hidden_tag() }}{{ field(form.day, type="date") }}{{ field(form.amount) }}<button>登録/更新</button>
 </form>

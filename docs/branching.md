@@ -21,6 +21,7 @@ main ───●───────●───────●──▶  常�
 - 1ブランチ = 1目的、小さなPR（目安400行以内）
 - TDD：ブランチ内で「テストのみのコミット（レッド）→ 実装コミット（グリーン）→ 整理（リファクタ）」の順
 - コミットメッセージ：`feat:` `fix:` `test:` `refactor:` `docs:` `chore:` `ci:`
+- DBスキーマ変更は `/migrations/` と `alembic.ini` をCODEOWNERSレビュー対象にし、アプリ用DBロールでDDLを実行しない
 
 ## 2. main の保護（GitHub Rulesets）
 Settings → Rules → Rulesets → New branch ruleset（対象: `main`、Enforcement: Active）

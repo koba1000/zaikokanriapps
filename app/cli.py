@@ -1,4 +1,6 @@
 import click
+from alembic import command
+from alembic.config import Config
 from flask import Flask
 from sqlalchemy import select
 
@@ -12,9 +14,9 @@ from app.models import User
 def register_cli(app: Flask) -> None:
     @app.cli.command("init-db")
     def init_db() -> None:
-        """テーブル作成（開発・初回用）。"""
-        db.create_all()
-        click.echo("tables created")
+        """Alembicでスキーマを最新化する。"""
+        command.upgrade(Config("alembic.ini"), "head")
+        click.echo("database schema upgraded")
 
     @app.cli.command("create-owner")
     @click.argument("username")

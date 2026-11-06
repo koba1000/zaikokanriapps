@@ -2,6 +2,47 @@
 {% block content %}
 <h1>発注候補</h1>
 <p><a href="{{ url_for('inventory.orders_csv') }}">CSVでダウンロード</a></p>
+<p>入荷済みにしても在庫数は自動で変わりません。実物を棚卸して在庫画面に反映してください。</p>
+<h2>発注中</h2>
+{% if open_orders %}
+<table>
+  <tr><th>仕入先</th><th>品名</th><th>発注量</th><th>発注日時</th><th></th></tr>
+  {% for order in open_orders %}
+  <tr>
+    <td>{{ order.supplier or '（仕入先未設定）' }}</td>
+    <td>{{ order.item_name }}</td>
+    <td>{{ order.quantity }} {{ order.unit }}</td>
+    <td>{{ order.ordered_at }}</td>
+    <td>
+      <form method="post" action="{{ url_for('inventory.receive_order', order_id=order.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button>入荷済みにする</button>
+      </form>
+      <form method="post" action="{{ url_for('inventory.cancel_order', order_id=order.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button>取消</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p>発注中の品目はありません。</p>{% endif %}
+<h2>発注履歴（直近50件）</h2>
+{% if recent_orders %}
+<table>
+  <tr><th>仕入先</th><th>品名</th><th>発注量</th><th>発注日時</th><th>状態</th></tr>
+  {% for order in recent_orders %}
+  <tr>
+    <td>{{ order.supplier or '（仕入先未設定）' }}</td>
+    <td>{{ order.item_name }}</td>
+    <td>{{ order.quantity }} {{ order.unit }}</td>
+    <td>{{ order.ordered_at }}</td>
+    <td>{{ {'ordered': '発注中', 'received': '入荷済み', 'cancelled': '取消'}[order.status] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p>発注履歴はありません。</p>{% endif %}
+<h2>新たな発注候補</h2>
 {% for supplier, items in by_supplier.items() %}
 <h2>{{ supplier }}</h2>
 <table>

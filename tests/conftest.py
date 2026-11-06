@@ -69,7 +69,11 @@ def make_app(csrf: bool = False):
 
 @pytest.fixture()
 def app():
-    return make_app()
+    app = make_app()
+    yield app
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()
 
 
 @pytest.fixture()
