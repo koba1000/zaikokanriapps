@@ -2,7 +2,8 @@ from decimal import Decimal
 
 from app import crypto
 from app.extensions import db
-from app.models import AuditLog, Employee, Item, StockLog
+from app.models import AuditLog, Employee, Item, PurchaseOrder, StockLog
+from tests.conftest import login
 
 
 def test_low_stock_highlighted_and_ordered(owner):
@@ -110,7 +111,9 @@ def test_owner_sales_and_user_management(app, owner):
     assert (
         owner.post("/admin/sales", data={"day": "2026-11-01", "amount": "50000"}).status_code == 302
     )
-    assert "50,000" in owner.get("/admin/sales").get_data(as_text=True)
+    sales_page = owner.get("/admin/sales").get_data(as_text=True)
+    assert "50,000" in sales_page
+    assert "日別合計" in sales_page and "会計・税計算・返金には対応していません" in sales_page
     weak = owner.post(
         "/admin/users", data={"username": "new1", "role": "staff", "initial_password": "short"}
     )
@@ -125,8 +128,6 @@ def test_owner_sales_and_user_management(app, owner):
 
 
 def test_deactivated_user_session_revoked(app, owner):
-    from tests.conftest import login
-
     staff_client = app.test_client()
     login(staff_client, "staff1")
     with app.app_context():
@@ -135,3 +136,64 @@ def test_deactivated_user_session_revoked(app, owner):
         sid = db.session.scalar(db.select(User.id).filter_by(username="staff1"))
     owner.post(f"/admin/users/{sid}/deactivate")
     assert staff_client.get("/").status_code == 302
+
+
+def test_order_record_stops_duplicate_candidates_until_received(app, staff):
+    with app.app_context():
+        item = db.session.scalar(db.select(Item).filter_by(name="コーヒー豆"))
+        item_id = item.id
+        initial_quantity = item.quantity
+
+    assert staff.post(f"/orders/{item_id}/ordered").status_code == 302
+    assert staff.post(f"/orders/{item_id}/ordered").status_code == 302
+    with app.app_context():
+        assert db.session.scalar(db.select(db.func.count(PurchaseOrder.id))) == 1
+    page = staff.get("/orders").get_data(as_text=True)
+    candidates = page.split("新たな発注候補", 1)[1]
+    assert "コーヒー豆" not in candidates
+    assert page.count("コーヒー豆") == 2
+    assert "発注中" in page
+    assert "入荷済みにしても在庫数は自動で変わりません" in page
+
+    with app.app_context():
+        order = db.session.scalar(db.select(PurchaseOrder))
+        order_id = order.id
+        assert order.quantity == Decimal("5")
+        assert order.item_name == "コーヒー豆"
+        assert order.supplier == "A商店"
+        assert order.unit == "kg"
+
+    assert staff.post(f"/orders/{order_id}/receive").status_code == 302
+    with app.app_context():
+        assert db.session.get(Item, item_id).quantity == initial_quantity
+        assert db.session.get(PurchaseOrder, order_id).status == "received"
+    history = staff.get("/orders").get_data(as_text=True)
+    assert "コーヒー豆" in history
+    assert "入荷済み" in history
+
+
+def test_cancelling_order_returns_item_to_candidates(app, owner):
+    with app.app_context():
+        item_id = db.session.scalar(db.select(Item.id).filter_by(name="コーヒー豆"))
+    owner.post(f"/orders/{item_id}/ordered")
+
+    with app.app_context():
+        order_id = db.session.scalar(db.select(PurchaseOrder.id))
+    assert owner.post(f"/orders/{order_id}/cancel").status_code == 302
+    with app.app_context():
+        assert db.session.get(PurchaseOrder, order_id).status == "cancelled"
+    assert "コーヒー豆" in owner.get("/orders").get_data(as_text=True)
+
+
+def test_order_transition_rejects_unknown_order(owner):
+    assert owner.post("/orders/9999/receive").status_code == 404
+
+
+def test_item_with_order_history_cannot_be_deleted(app, owner):
+    with app.app_context():
+        item_id = db.session.scalar(db.select(Item.id).filter_by(name="コーヒー豆"))
+    assert owner.post(f"/orders/{item_id}/ordered").status_code == 302
+
+    assert owner.post(f"/items/{item_id}/delete").status_code == 302
+    with app.app_context():
+        assert db.session.get(Item, item_id) is not None

@@ -2,7 +2,18 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from flask_login import UserMixin
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, LargeBinary, Numeric, String
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    Numeric,
+    String,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
@@ -68,6 +79,34 @@ class Employee(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
     address_encrypted: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class PurchaseOrder(db.Model):
+    __tablename__ = "purchase_orders"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('ordered', 'received', 'cancelled')", name="ck_purchase_order_status"
+        ),
+        Index(
+            "uq_purchase_orders_open_item",
+            "item_id",
+            unique=True,
+            sqlite_where=text("status = 'ordered'"),
+            postgresql_where=text("status = 'ordered'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    item_name: Mapped[str] = mapped_column(String(100))
+    supplier: Mapped[str] = mapped_column(String(100))
+    unit: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="ordered")
+    ordered_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    received_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Sale(db.Model):

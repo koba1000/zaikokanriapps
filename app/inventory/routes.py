@@ -1,15 +1,17 @@
 import csv
 import io
+from typing import Literal
 
 from flask import Blueprint, Response, abort, flash, redirect, render_template, url_for
 from flask_login import current_user
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app import audit
 from app.authz import OWNER, ROLES, roles_required
 from app.extensions import db
 from app.inventory.forms import ItemForm, StockForm
-from app.models import Item, StockLog, utcnow
+from app.models import Item, PurchaseOrder, StockLog, utcnow
 
 bp = Blueprint("inventory", __name__)
 
@@ -96,6 +98,12 @@ def edit_item(item_id: int):  # type: ignore[no-untyped-def]
 @roles_required(OWNER)
 def delete_item(item_id: int):  # type: ignore[no-untyped-def]
     item = _get_item(item_id)
+    has_order_history = db.session.scalar(
+        select(PurchaseOrder.id).where(PurchaseOrder.item_id == item.id).limit(1)
+    )
+    if has_order_history is not None:
+        flash("発注履歴がある品目は削除できません", "error")
+        return redirect(url_for("inventory.dashboard"))
     db.session.execute(StockLog.__table__.delete().where(StockLog.item_id == item.id))
     db.session.delete(item)
     audit.record("item_delete", str(item_id))
@@ -105,7 +113,12 @@ def delete_item(item_id: int):  # type: ignore[no-untyped-def]
 
 def _order_candidates() -> list[Item]:
     items = db.session.scalars(select(Item).order_by(Item.supplier, Item.name)).all()
-    return [i for i in items if i.needs_order]
+    open_item_ids = set(
+        db.session.scalars(
+            select(PurchaseOrder.item_id).where(PurchaseOrder.status == "ordered")
+        ).all()
+    )
+    return [item for item in items if item.needs_order and item.id not in open_item_ids]
 
 
 @bp.route("/orders")
@@ -114,7 +127,52 @@ def orders():  # type: ignore[no-untyped-def]
     by_supplier: dict[str, list[Item]] = {}
     for item in _order_candidates():
         by_supplier.setdefault(item.supplier or "（仕入先未設定）", []).append(item)
-    return render_template("inventory/orders.html", by_supplier=by_supplier)
+    open_orders = db.session.scalars(
+        select(PurchaseOrder)
+        .where(PurchaseOrder.status == "ordered")
+        .order_by(PurchaseOrder.ordered_at)
+    ).all()
+    recent_orders = db.session.scalars(
+        select(PurchaseOrder).order_by(PurchaseOrder.ordered_at.desc()).limit(50)
+    ).all()
+    return render_template(
+        "inventory/orders.html",
+        by_supplier=by_supplier,
+        open_orders=open_orders,
+        recent_orders=recent_orders,
+    )
+
+
+def _transition_order(order_id: int, status: Literal["received", "cancelled"]) -> None:
+    order = db.session.get(PurchaseOrder, order_id)
+    if order is None:
+        abort(404)
+    if order.status != "ordered":
+        flash("この発注はすでに処理済みです", "error")
+        return
+    if status == "received":
+        order.received_at = utcnow()
+        action = "order_received"
+    else:
+        order.cancelled_at = utcnow()
+        action = "order_cancelled"
+    order.status = status
+    audit.record(action, str(order.id))
+    db.session.commit()
+
+
+@bp.route("/orders/<int:order_id>/receive", methods=["POST"])
+@roles_required(*ROLES)
+def receive_order(order_id: int):  # type: ignore[no-untyped-def]
+    _transition_order(order_id, "received")
+    return redirect(url_for("inventory.orders"))
+
+
+@bp.route("/orders/<int:order_id>/cancel", methods=["POST"])
+@roles_required(*ROLES)
+def cancel_order(order_id: int):  # type: ignore[no-untyped-def]
+    _transition_order(order_id, "cancelled")
+    return redirect(url_for("inventory.orders"))
 
 
 @bp.route("/orders.csv")
@@ -140,7 +198,35 @@ def orders_csv():  # type: ignore[no-untyped-def]
 @roles_required(*ROLES)
 def mark_ordered(item_id: int):  # type: ignore[no-untyped-def]
     item = _get_item(item_id)
-    item.last_ordered_at = utcnow()
+    if not item.needs_order:
+        flash("発注点を下回っていないため発注できません", "error")
+        return redirect(url_for("inventory.orders"))
+    active_order = db.session.scalar(
+        select(PurchaseOrder.id).where(
+            PurchaseOrder.item_id == item.id, PurchaseOrder.status == "ordered"
+        )
+    )
+    if active_order is not None:
+        flash("この品目はすでに発注中です", "error")
+        return redirect(url_for("inventory.orders"))
+    ordered_at = utcnow()
+    db.session.add(
+        PurchaseOrder(
+            item_id=item.id,
+            user_id=current_user.id,
+            quantity=item.order_quantity,
+            item_name=item.name,
+            supplier=item.supplier,
+            unit=item.unit,
+            status="ordered",
+            ordered_at=ordered_at,
+        )
+    )
+    item.last_ordered_at = ordered_at
     audit.record("order_marked", str(item.id))
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash("この品目はすでに発注中です", "error")
     return redirect(url_for("inventory.orders"))

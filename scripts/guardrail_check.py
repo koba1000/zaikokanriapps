@@ -15,6 +15,8 @@ from dataclasses import dataclass
 PROTECTED = (
     ".github/",
     "scripts/",
+    "migrations/",
+    "alembic.ini",
     "pyproject.toml",
     "requirements",
     "render.yaml",

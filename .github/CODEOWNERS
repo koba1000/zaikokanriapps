@@ -13,3 +13,5 @@
 /.pre-commit-config.yaml @koba1000
 /scripts/             @koba1000
 /tests/               @koba1000
+/migrations/           @koba1000
+/alembic.ini           @koba1000

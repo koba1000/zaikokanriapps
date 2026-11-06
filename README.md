@@ -14,4 +14,4 @@
 Flask+Jinja2(SSR) → Render → Neon(PostgreSQL) / CI: GitHub Actions / AI: GitHub Copilot
 
 ## 実装状況
-アプリ・テスト・CI・ガードレール設定を実装済み（`pytest` 33件成功）。起動方法は [docs/architecture.md](docs/architecture.md) の「動かし方」を参照。GitHub/Render/Neon の手動設定は [docs/defense-in-depth.md](docs/defense-in-depth.md) の §5。
+アプリ・テスト・CI・ガードレール・発注状態管理・Alembicマイグレーションを実装済み。起動方法は [docs/architecture.md](docs/architecture.md) の「動かし方」を参照。GitHub/Render/Neon の手動設定は [docs/defense-in-depth.md](docs/defense-in-depth.md) の §5。

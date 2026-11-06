@@ -34,7 +34,7 @@
 
 ### L3 PR
 - main保護：直接push禁止、PR必須、必須ステータスチェック、1名以上承認、force push禁止、会話解決必須
-- CODEOWNERSで次は人間承認必須：`app/auth/`、`app/authz/`、`app/crypto/`、`migrations/`、`.github/`、`requirements*.txt`、`render.yaml`
+- CODEOWNERSで次は人間承認必須：`app/auth/`、`app/authz.py`、`app/crypto.py`、`migrations/`、`alembic.ini`、`.github/`、`requirements*.txt`、`render.yaml`
 - PRテンプレにセキュリティチェックリスト
 - AI（Copilotエージェント）は自分のPRを承認できない
 
@@ -67,7 +67,7 @@
 - CSRF：Flask-WTF CSRFProtect
 - ヘッダ：Flask-Talisman（CSP、HSTS等）
 - 入力検証：WTForms等、出力はJinja2自動エスケープ
-- DB：SQLAlchemy（パラメータ化）、アプリ用ロールはDMLのみ、マイグレーション用ロール分離、`sslmode=require`
+- DB：SQLAlchemy（パラメータ化）、アプリ用ロールはDMLのみ、`MIGRATION_DATABASE_URL`でDDL可能なマイグレーション用ロールと分離、`sslmode=require`
 - 暗号化：住所はAES-GCM（`cryptography`）で列暗号化、鍵は環境変数。ローテーション手順を用意
 - 本番でスタックトレースを返さない
 
@@ -101,3 +101,10 @@
 - GitHub：ブランチ保護（Rulesets）、Secret Scanning/Push Protection、Dependabot alerts、CodeQL有効化、2FA必須
 - Render：Auto-Deploy をCI成功後に設定、環境変数登録
 - Neon：アプリ用/マイグレーション用ロール作成
+
+### DBスキーマ変更の運用
+- 新規DBは `MIGRATION_DATABASE_URL` を設定し、`alembic upgrade head`（または `flask --app wsgi init-db`）で作成する
+- `db.create_all()` で作成済みの既存DBは、バックアップ確認後、スキーマが `0001_baseline` と一致する場合のみ `alembic stamp 0001_baseline` を一度実行し、その後 `alembic upgrade head` で追随する
+- `stamp` は既存スキーマを検査・変更せず履歴だけを記録するため、不一致のDBに実行しない
+- Renderのアプリ起動時に自動マイグレーションは行わない。PRでマイグレーションをテスト・レビューし、DDL用接続先で適用してからアプリをデプロイする
+- 退職後1年で住所を消去する方針は合意済みだが、定期実行方法が未決のため住所の自動削除・アカウント連携は保留中
