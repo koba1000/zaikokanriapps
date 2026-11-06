@@ -127,6 +127,8 @@ def test_protected_paths_warn():
         "render.yaml",
         ".pre-commit-config.yaml",
         "scripts/guardrail_check.py",
+        "migrations/versions/0002_purchase_orders.py",
+        "alembic.ini",
         "app/authz.py",
         "app/crypto.py",
     ):
